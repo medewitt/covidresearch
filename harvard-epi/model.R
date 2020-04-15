@@ -2,34 +2,35 @@ library(deSolve)
 library(plotly)
 library(dplyr)
 library(reshape)
+library(RColorBrewer)
 library(htmltools)
-source(here::here("harvard-epi", "src","functions.R"))
 
+source(here::here("harvard-epi", "src","functions.R"))
 # Set parameters
-IncubPeriod= 4 #Duration of incubation period
+# (in Shiny app these are input by sliders)
+
+IncubPeriod= 5 #Duration of incubation period
 DurMildInf= 6 #Duration of mild infections
 FracSevere= 15 #% of symptomatic infections that are severe
 FracCritical= 5 #% of symptomatic infections that are critical
 ProbDeath= 40 #Death rate for critical infections
-DurHosp= 8 #Duration of severe infection/hospitalization
+DurHosp= 6 #Duration of severe infection/hospitalization
 TimeICUDeath= 8 #Duration critical infection/ICU stay
 
 AllowPresym="No"
 AllowAsym="No"
-FracAsym=50 #Fraction of all infections that are asymptomatic
+FracAsym=25 #Fraction of all infections that are asymptomatic
 PresymPeriod=2 #Length of infectious phase of incubation period
 DurAsym=6 #Duration of asympatomatic infection
-reduction <- 0.6
 
-b1= 0.5*reduction #Transmission rate (mild infections)
-b2= 0.01*reduction #Transmission rate (severe infections)
-b3= 0.01*reduction #Transmission rate (critical infections)
-be = 0.5*reduction #Transmission rate (pre-symptomatic)
-b0 = 0.5*reduction #Transmission rate (asymptomatic infections)
-N= 934000 #Total population size
-Tmax= 300 #Maximum time
-InitInf= 1 #Initial # infected
-
+b1= 0.5 #Transmission rate (mild infections)
+b2= 0.01 #Transmission rate (severe infections)
+b3= 0.01 #Transmission rate (critical infections)
+be = 0.5 #Transmission rate (pre-symptomatic)
+b0 = 0.5 #Transmission rate (asymptomatic infections)
+N= 1000 #Total population size
+Tmax= 300 #Initial # infected
+InitInf= 1 #Maximum time
 yscale="linear"
 
 AllowSeason="No"
@@ -37,33 +38,44 @@ seas.amp=0.0 #relative amplitude of seasonal fluctuations, in [0,1]
 seas.phase=-90 #phase of seasonal fluctuations, measuered in days relative to time zero when peak will occur (0=peak occurs at time zero, 30 = peak occurs one month after time zero). Can be negative
 #Note that the beta values chosen above will be those for time zero, wherever that occurs in the seasonality of things.
 
-PlotCombine="No"
+#Capacity parameters (US)
+HospBedper=2.8 #Total hospital beds per 1000 ppl 
+HospBedOcc=66 # average % occupancy of hospital beds
+ICUBedper=0.26 # Total ICU beds per 1000 ppl
+ICUBedOcc=68 # average % occupancy of hospital beds
+IncFluOcc=10 # increase in occupancy during flu season
+ConvVentCap=0.062 # conventional capacity for mechanical ventilation, per 1000 ppl
+ContVentCap=0.155 # contingency capacity for mechanical ventilation, per 1000 ppl
+CrisisVentCap=0.418 # crisis capacity for mechanical ventilation, per 1000 ppl
+
+#Overflow death/progression rates
+FracProgressNoCare = 50 # % of symptomatic infections that would progress to critical without any hospital care
+FracDieNoCare=99 # % of critical infections that would die without ICU care (can't be exactly 100%)
+
+# Choose overflow option to impose
+CapHosp="HospBedsOcc" # This is the type of cap to be used for individuals requiring regular hospitalization. Options include "None" (no cap on hospital beds), "HospBeds" (cap based on total hospital beds), "HospBedsOcc" (cap based on average annual unoccupied hospital beds), or "HospBedsOccFlu" (cap based on unoccupied hospital beds during flu season)
+CapICU="ICUBedsOcc" # This is the type of cap to be used for individuals requiring critical care (ICU beds + mechanical ventilators). Options include "None" (no cap on ICU beds/ventilators), "ICUBeds" (cap based on total ICU beds), "ICUBedsOcc" (cap basd on average annual unocuppied hospital beds), "ICUBedsOccFlu" (cap based on unoccupied hospital beds during flu season), "ConvVentCap" (cap based on conventional capacity for mechanical ventilation), "ContVentCap" (cap based on contingency capacity for mechanical ventilation), "CrisisVentCap" (cap based on crisis capacity for mechanical ventilation)
+
+#Intervention parameters
+Tint = 30 #Intervention start time (days)
+Tend = Tmax #Intervention end time (days)
+s0=0 #Reduction in transmission from asymptomatic/presymptomatic infections
+s1=90 #Reduction in transmission from mild infections
+s2=0 #Reduction in transmission from severe infections
+s3 =0 #Reduction in transmission rate from critical infections
+RoundOne = FALSE #Round values to nearest integar post-intervention?"
 
 #Put these into an input structure
-input=list("IncubPeriod"=IncubPeriod,
-					 "DurMildInf"=DurMildInf,
-					 "FracSevere"=FracSevere,
-					 "FracCritical"=FracCritical,
-					 "ProbDeath"=ProbDeath,
-					 "DurHosp"=DurHosp,
-					 "TimeICUDeath"=TimeICUDeath,
-					 "FracAsym"=FracAsym, 
-					 "PresymPeriod"=PresymPeriod, 
-					 "DurAsym"=DurAsym,
-					 "be"=be,"b0"=b0, "b1"=b1,"b2"=b2,"b3"=b3,
-					 "seas.amp"=seas.amp, "seas.phase"=seas.phase,
-					 "N"=N,"Tmax"=Tmax,"InitInf"=InitInf,
-					 "yscale"=yscale,"AllowPresym"=AllowPresym,
-					 "AllowAsym"=AllowAsym,"AllowSeason"=AllowSeason,
-					 "PlotCombine"=PlotCombine,
-					 "CapHosp" = 10000,
-					 "CapICU" = 1000,
-					 'FracProgressNoCare' = 400,
-					 'FracDieNoCare' = 900)
+input=list("IncubPeriod"=IncubPeriod,"DurMildInf"=DurMildInf,"FracSevere"=FracSevere,"FracCritical"=FracCritical,"ProbDeath"=ProbDeath,"DurHosp"=DurHosp,"TimeICUDeath"=TimeICUDeath,"FracAsym"=FracAsym, "PresymPeriod"=PresymPeriod, "DurAsym"=DurAsym, "be"=be,"b0"=b0, "b1"=b1,"b2"=b2,"b3"=b3,"seas.amp"=seas.amp, "seas.phase"=seas.phase,"N"=N,"Tmax"=Tmax,"InitInf"=InitInf,"yscale"=yscale,"AllowPresym"=AllowPresym,"AllowAsym"=AllowAsym,"AllowSeason"=AllowSeason,"HospBedper"=HospBedper,"HospBedOcc"=HospBedOcc,"ICUBedper"=ICUBedper,"ICUBedOcc"=ICUBedOcc,"IncFluOcc"=IncFluOcc,"ConvVentCap"=ConvVentCap,"ContVentCap"=ContVentCap,"CrisisVentCap"=CrisisVentCap,"CapHosp"=CapHosp,"CapICU"=CapICU,"FracProgressNoCare"=FracProgressNoCare,"FracDieNoCare"=FracDieNoCare,"Tint"=Tint,"Tend"=Tend,"s0"=s0,"s1"=s1,"s2"=s2,"s3"=s3,"RoundOne"=RoundOne)
 
 CFR=(input$ProbDeath/100)*(input$FracCritical) #Case fatality rate
 
-# Run simulations
+# get capacity levels
+capParams=SetHospCapacityOverflow(input)
+icap=unname(capParams["icap"])
+hcap=unname(capParams["hcap"])
+
+# ------- Run simulations (no intervention) ------------
 
 sim=SimSEIR(input)
 
