@@ -148,7 +148,8 @@ finalRes <- dplyr::tibble(
 	country = allTogetherMid$country,
 	total_cases = allTogetherMid$total_cases,
 	total_deaths = allTogetherMid$total_deaths,
-	underreporting_estimate  = pmin(allTogetherLow$underreporting_estimate, allTogetherMid$underreporting_estimate, allTogetherHigh$underreporting_estimate, na.rm = T),
+	underreporting_estimate  = pmin(allTogetherLow$underreporting_estimate, allTogetherMid$underreporting_estimate, 
+																	allTogetherHigh$underreporting_estimate, na.rm = T),
 	lower = pmin(allTogetherLow$lower, allTogetherMid$lower, allTogetherHigh$lower),
 	upper = pmax(allTogetherLow$upper, allTogetherMid$upper, allTogetherHigh$upper))
 
