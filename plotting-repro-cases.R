@@ -1,4 +1,13 @@
 library(dplyr)
+library(outbreaktools)
+
+dat <- pull_state_cases()
+
+
+
+reports <- generate_underreporting_estimates(dat,
+																						 cCFRBaseline = 1/.7,
+																						 cCFREstimateRange = c(.67, 1.34)/.7)
 
 dat <- nccovid::get_covid_state()
 
@@ -15,10 +24,7 @@ first_case_by_county <-dat %>%
 
 avg_cases_per_day <- list()
 
-
-
 all_variables <- unique(first_case_by_county$county)
-
 
 for(i in 1:length(all_variables)){
 	x <- dat %>% 
@@ -48,6 +54,9 @@ dat_total <- dat %>%
 	left_join(nccovid::nc_fatality_estimates, by = c("county" ="NAME")) %>% 
 	mutate(cases_per_100k = cases_confirmed_cum/(pop/100000)) %>% 
 	left_join(avg_cases_per_day) %>% 
+	left_join(reports %>% select(country, underreporting_estimate),
+						by =c("county" = "country")) %>% 
+	mutate(daily_cases_per_100k_adj = (avg_cases_per/underreporting_estimate) /(pop/100000))
 	mutate(daily_cases_per_100k =avg_cases_per /(pop/100000))
 
 library(EpiEstim)
@@ -99,12 +108,20 @@ combined_dat_plotting <- current_repo_rate %>%
 library(ggplot2)
 library(ggrepel)
 combined_dat_plotting %>% 
-	mutate(my_col = ifelse(county %in% nccovid::cone_region, "A", "B")) %>% 
-	ggplot(aes(daily_cases_per_100k,`Median(R)`, group = county, color = my_col))+
-	geom_point()+
+	filter(county %in% c("Wake", "Durham", "Mecklenburg", "Orange", nccovid::triad_counties)) %>% 
+	mutate(my_col = ifelse(county %in% nccovid::triad_counties, "A", "B")) %>% 
+	ggplot(aes(daily_cases_per_100k_adj,`Median(R)`, group = county, color = my_col))+
+	geom_pointrange(aes(ymin=`Quantile.0.05(R)`, ymax=`Quantile.0.95(R)`))+
 	geom_text_repel(aes(label = county), size = 2)+
 	geom_hline(yintercept = 1, lty = "dashed")+
-	theme_minimal()
+	labs(
+		title = "Analysis Shows Different Counties Are Experiencing Different Outcomes",
+		y = "Estimated Reproductive Rate",
+		x = "Average Adjusted Cases per Day per 100k",
+		caption = "Cases Adjusted Using CFR Method by Russel 2020"
+	)+
+	theme_minimal()+
+	theme(legend.position = "none")
 
 combined_dat_plotting %>% 
 	mutate(my_col = ifelse(county %in% nccovid::triad_counties, "A", "B")) %>% 
