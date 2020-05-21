@@ -26,14 +26,15 @@ summary(mod)
 dat_forsyth %>%
 	ggplot(aes(x = forsyth_dates, y = pos_rate)) +
 	geom_line(aes(y = pos_rate_smoothed)) +
-	geom_point(aes(size = 1), alpha = 0.1) +
+	geom_point(aes(size = forsyth_test), alpha = 0.1) +
 	scale_size_area(label = scales::comma, max_size = 12) +
 	labs(size = "Number of daily tests", 
 			 x = "",
 			 y = "",
-			 title = "Test positivity rates for COVID-19 in 12 US states",
-			 caption = "Source: covidtracking.com, smoothing by freerangestats.info") +
-	scale_y_continuous(label = scales::percent, limits = c(0, 1))
+			 title = "Test positivity rates for COVID-19 in Forsyth County",
+			 caption = "Source: Forsyth County Department of Health") +
+	scale_y_continuous(label = scales::percent, limits = c(0, 1))+
+	theme_minimal()
 
 increase_cases <- function(observed_cases, pos_rate, m, k){
 	y <- observed_cases * pos_rate ^ k * m
@@ -151,7 +152,13 @@ library(cowplot)
 library(patchwork)
 draw_plots <- plots[[1]] + plots[[2]] +plots[[3]] +plots[[4]]  + annotation_plot
 
-plots[[1]] + plots[[4]] + annotate("text", x = as.Date("2020-04-20"), y = 5, label = str_wrap(
-	"Adjusting case numbers for test positivity makes estimates of
-                                                  R more realistic but cannot make up for the poor data quality in 
-                                                  March.", 40), hjust = 0)
+p3 <- plots[[1]] + plots[[4]] +
+	patchwork::plot_annotation(title = "Estimated Reproductive Rate", 
+														 subtitle = "Using Daily Cases Allows for More Robust Local Estimates for Reproductive Rate",
+														 caption = "Analysis: Michael DeWitt")
+
+cowplot::save_plot(p3, base_height = 8, base_width = 10.5,
+									 filename = here::here("output", paste0(Sys.Date(),"-forsyth-reproduction-number.pdf")))
+
+
+

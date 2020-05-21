@@ -107,7 +107,7 @@ combined_dat_plotting <- current_repo_rate %>%
 
 library(ggplot2)
 library(ggrepel)
-combined_dat_plotting %>% 
+p1<- combined_dat_plotting %>% 
 	filter(county %in% c("Wake", "Durham", "Mecklenburg", "Orange", nccovid::triad_counties)) %>% 
 	mutate(my_col = ifelse(county %in% nccovid::triad_counties, "A", "B")) %>% 
 	ggplot(aes(daily_cases_per_100k_adj,`Median(R)`, group = county, color = my_col))+
@@ -116,12 +116,17 @@ combined_dat_plotting %>%
 	geom_hline(yintercept = 1, lty = "dashed")+
 	labs(
 		title = "Analysis Shows Different Counties Are Experiencing Different Outcomes",
-		y = "Estimated Reproductive Rate",
-		x = "Average Adjusted Cases per Day per 100k",
-		caption = "Cases Adjusted Using CFR Method by Russel 2020"
+		subtitle = "Reproductive Rate Estimated from 7 Day Sliding Window and Serial Interval from Nishiura",
+		y = expression("Estimated Reproductive Rate ("*R[t]*")"),
+		x = "Adjusted Average Cases per Day per 100k",
+		caption = "Cases Adjusted Using CFR Method by Russel 2020\nAnalysis: Michael DeWitt"
 	)+
 	theme_minimal()+
-	theme(legend.position = "none")
+	theme(legend.position = "none")+
+	scale_color_manual(values = c("orange", "blue"))
+
+cowplot::save_plot(p1, base_height = 8, base_width = 10.5,
+									 filename = here::here("output", paste0(Sys.Date(),"-triad-cases-reproduction-number.pdf")))
 
 combined_dat_plotting %>% 
 	mutate(my_col = ifelse(county %in% nccovid::triad_counties, "A", "B")) %>% 
