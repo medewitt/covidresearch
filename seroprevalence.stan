@@ -27,8 +27,8 @@ model {
   // Truncated Normal Because That's What is 
   // Available
   
-  spec ~ normal(specificity, sensitivity_sd);
-  sens ~ normal(sensitivity, specificity_sd);
+  spec ~ normal(specificity, specificity_sd);
+  sens ~ normal(sensitivity, sensitivity_sd);
   
 }
 

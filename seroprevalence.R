@@ -16,10 +16,10 @@ postitives <- 18750*.14
 dat <- list(
 	y_sample = as.integer(postitives),
 	n_sample = 18750L,
-	sensitivity = .927,
+	sensitivity = .863,
 	specificity = .999,
 	sensitivity_sd = .01,
-	specificity_sd= .001
+	specificity_sd= .01
 )
 
 fit <- sampling(model, data = dat, iter = 2000,
@@ -30,9 +30,9 @@ summary(fit)
 # change testing params ---------------------------------------------------
 
 dat <- list(
-	y_sample = as.integer(postitives),
-	n_sample = 18750L,
-	sensitivity = .927,
+	y_sample = as.integer(3500L*.14),
+	n_sample = 3500L,
+	sensitivity = .873,
 	specificity = .999,
 	sensitivity_sd = .01,
 	specificity_sd= .001
