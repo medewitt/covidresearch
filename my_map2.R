@@ -1,4 +1,4 @@
-
+# http://bl.ocks.org/dougdowson/9832019
 # D3 map ------------------------------------------------------------------
 
 
@@ -13,12 +13,22 @@ Nigeria <- ne_states(country = "Nigeria", returnclass = "sf")
 covid_cases <-nccovid::get_covid_state()
 
 nc_counties <- tigris::counties(state = "NC")
+
+
 nc_counties <- st_as_sf(nc_counties)
+write_sf(nc_counties, dsn = "counties.geojson", delete_dsn = TRUE)
 library(tidyverse)
-combined <- covid_cases[date==Sys.Date()] %>%
+combined <- covid_cases[date==Sys.Date()]%>%
 	left_join(nc_counties, by = c("county" = "NAME")) %>% 
 	st_as_sf() %>% 
-	select(county, cases_daily)
+	select(COUNTYFP, cases_daily)
+
+geojsonio::geojson_write(nc_counties,file = "counties.geojson")
+geojson::
+
+combined %>% 
+	sf::st_drop_geometry() %>% 
+	write_csv("cases.csv")
 # Map ----
 r2d3map(
   data = combined,
