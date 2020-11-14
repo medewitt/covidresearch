@@ -45,6 +45,11 @@ for(i in 1:25){
 	cases[i]<- output[i,2]-output[i+1,2]
 }
 
+cases_all <- vector(mode = "numeric")
+for(i in 1:(length(cases)+14)){
+	cases_all[i]<- output[i,2]-output[i+1,2]
+}
+
 # stan_data ---------------------------------------------------------------
 slice_n <- 25
 stan_data <- list(
@@ -101,4 +106,7 @@ gather_draws(fit, incidence_out[i]) %>%
 	)+
 	geom_point(data = tibble(cases = cases, i = 1:length(cases)),
 						 aes(i, cases), inherit.aes = FALSE, colour = "orange")+
+	geom_point(data = tibble(cases = tail(cases_all,14), 
+													 i = tail(1:length(cases_all),14)),
+						 aes(i, cases), inherit.aes = FALSE, colour = "red")+
 	theme_minimal()
