@@ -1,6 +1,6 @@
 library(cmdstanr)
 
-mod <- cmdstan_model(here::here("stan", "new-sir.stan"))
+mod <- cmdstan_model(here::here("stan", "new-sir-varying.stan"))
 
 
 # fake data ---------------------------------------------------------------
@@ -109,4 +109,57 @@ gather_draws(fit, incidence_out[i]) %>%
 	geom_point(data = tibble(cases = tail(cases_all,14), 
 													 i = tail(1:length(cases_all),14)),
 						 aes(i, cases), inherit.aes = FALSE, colour = "red")+
+	theme_minimal()
+
+
+# nc data -----------------------------------------------------------------
+nc_data <- nccovid::pull_covid_summary()
+phase_3 <- nccovid::nc_events[nccovid::nc_events$event=="Phase 3",]$date
+
+cut_pt <- which(nc_data$date==phase_3)
+cases <- nc_data[cut_pt:nrow(nc_data)]$daily_cases
+dates <- nc_data[cut_pt:nrow(nc_data)]$date
+
+plot(cases)
+recovered <- 193511*5
+pop <- 11000000
+infected <- nc_data[,daily_cases][cut_pt]*10
+pred_duration <- 120
+stan_data <- list(
+	N_t =length(cases),
+	y0 = c(pop-recovered-infected,infected,recovered),
+	t = 1:length(cases),
+	cases = cases[-1],
+	pred_window = pred_duration,
+	t_pred = 1:(length(cases)+pred_duration)
+)
+
+output_frame_ready <- data.frame(
+	date = seq.Date(min(dates), max(dates)+pred_duration, by = 1),
+	i = 1:(length(cases)+pred_duration)
+)
+
+fit <- mod$sample(data = stan_data, 
+									chains = 2, parallel_chains = 2,
+									iter_sampling = 10000, adapt_delta = .95)
+
+fit$summary(variables = "beta")
+fit$summary(variables = "incidence_out")
+gather_draws(fit, incidence_out[i]) %>%
+	#mutate(.value = .value * .07) %>% 
+	dplyr::ungroup() %>% 
+	dplyr::left_join(output_frame_ready, by = "i") %>% 
+	group_by(date) %>%
+	curve_interval(.value, .width = c(.5, .8, .95,.99)) %>%
+	ggplot(aes(x = date, y = .value)) +
+	geom_hline(yintercept = 1, color = "gray75", linetype = "dashed") +
+	geom_lineribbon(aes(ymin = .lower, ymax = .upper))+
+	scale_fill_brewer() +
+	labs(
+		title = "Simulated SIR Curve for Infections",
+		subtitle = "Daily COVID-19 Cases for NC Since Phase 3",
+		y = "Cases"
+	)+
+	geom_point(data = tibble(cases = cases, date = dates),
+						 aes(date, cases), inherit.aes = FALSE, colour = "orange")+
 	theme_minimal()
