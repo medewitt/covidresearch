@@ -31,6 +31,8 @@ sir_model = function (current_timepoint, state_values, parameters)
 beta_value <- 1/3
 gamma_value <- 1/10
 
+(r_0 <- beta_value/gamma_value)
+
 parameter_list <- c (beta = beta_value, gamma = gamma_value)
 times <- 1:120
 initial_values <- c(S= 1000-2, I =2, R = 0)
@@ -62,8 +64,10 @@ stan_data <- list(
 )
 fit <- mod$sample(data = stan_data, 
 									chains = 2, parallel_chains = 2,
-									iter_sampling = 50)
-fit$summary()
+									iter_sampling = 5000)
+fit$summary(variables = c("beta", "gamma", "r0", "recovery"))
+fit$summary(variables = "gamma")
+plot(fit$summary(variables = "reff")$mean)
 library(tidybayes)
 library(posterior)
 library(dplyr)
@@ -121,7 +125,7 @@ cases <- nc_data[cut_pt:nrow(nc_data)]$daily_cases
 dates <- nc_data[cut_pt:nrow(nc_data)]$date
 
 plot(cases)
-recovered <- 193511*5
+recovered <- sum(nc_data[1:(cut_pt-1)]$daily_cases)*4
 pop <- 11000000
 infected <- nc_data[,daily_cases][cut_pt]*10
 pred_duration <- 120
@@ -139,12 +143,16 @@ output_frame_ready <- data.frame(
 	i = 1:(length(cases)+pred_duration)
 )
 
-fit <- mod$sample(data = stan_data, 
+fit <- mod$sample(data = stan_data, init = list(list(beta = .2), 
+																								list(gamma = .1)),
 									chains = 2, parallel_chains = 2,
-									iter_sampling = 10000, adapt_delta = .95)
+									iter_sampling = 20000, 
+									adapt_delta = .98, max_treedepth = 14)
 
-fit$summary(variables = "beta")
-fit$summary(variables = "incidence_out")
+params_of_interest <- c("r0", "recovery", "beta", "gamma")
+fit$summary(variables = params_of_interest)
+fit$summary(variables = "gamma")
+
 gather_draws(fit, incidence_out[i]) %>%
 	#mutate(.value = .value * .07) %>% 
 	dplyr::ungroup() %>% 
