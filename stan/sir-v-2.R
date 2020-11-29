@@ -1,6 +1,6 @@
 library(cmdstanr)
 
-mod <- cmdstan_model(here::here("stan", "new-sir-varying.stan"))
+mod <- cmdstan_model(here::here("stan", "new-sir.stan"))
 
 
 # fake data ---------------------------------------------------------------
@@ -124,11 +124,11 @@ cut_pt <- which(nc_data$date==phase_3)
 cases <- nc_data[cut_pt:nrow(nc_data)]$daily_cases
 dates <- nc_data[cut_pt:nrow(nc_data)]$date
 
-plot(cases)
+plot(cases, type = "b")
 recovered <- sum(nc_data[1:(cut_pt-1)]$daily_cases)*4
 pop <- 11000000
 infected <- nc_data[,daily_cases][cut_pt]*10
-pred_duration <- 120
+pred_duration <- 180
 stan_data <- list(
 	N_t =length(cases),
 	y0 = c(pop-recovered-infected,infected,recovered),
@@ -146,7 +146,7 @@ output_frame_ready <- data.frame(
 fit <- mod$sample(data = stan_data, init = list(list(beta = .2), 
 																								list(gamma = .1)),
 									chains = 2, parallel_chains = 2,
-									iter_sampling = 20000, 
+									iter_sampling = 4000, 
 									adapt_delta = .98, max_treedepth = 14)
 
 params_of_interest <- c("r0", "recovery", "beta", "gamma")
@@ -171,3 +171,23 @@ gather_draws(fit, incidence_out[i]) %>%
 	geom_point(data = tibble(cases = cases, date = dates),
 						 aes(date, cases), inherit.aes = FALSE, colour = "orange")+
 	theme_minimal()
+
+
+gather_draws(fit, reff[i]) %>%
+	#mutate(.value = .value * .07) %>% 
+	dplyr::ungroup() %>% 
+	dplyr::left_join(output_frame_ready, by = "i") %>% 
+	group_by(date) %>%
+	curve_interval(.value, .width = c(.5, .8, .95,.99)) %>%
+	ggplot(aes(x = date, y = .value)) +
+	geom_hline(yintercept = 1, color = "gray75", linetype = "dashed") +
+	geom_lineribbon(aes(ymin = .lower, ymax = .upper))+
+	scale_fill_brewer() +
+	labs(
+		title = "Effective Reproduction Number Simple SIR",
+		subtitle = "Daily COVID-19 Cases for NC Since Phase 3",
+		y = expression(R[t])
+	)+
+	theme_minimal()
+# Think about adding convolution 
+# https://github.com/cobeylab/epidemic-deconvolution/blob/main/stan/deconvolve-uncorrelated.stan

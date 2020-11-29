@@ -55,6 +55,9 @@ model {
 }
 generated quantities{
   real incidence_out[N_t+pred_window-1];
+  real reff[N_t+pred_window-1];
+  real r0;
+  real recovery;
   vector<lower=0>[3] y_pred[N_t+pred_window] = ode_rk45_tol(simple_SIR, y0, t0, t_pred,
 					   1e-6, 1e-6, 1000,
 					   beta, gamma);
@@ -62,5 +65,11 @@ generated quantities{
 	  incidence_out[i] = y_pred[i,1] - y_pred[i+1,1];
 	}
 	
+	for(i in 1:(N_t+pred_window-1)){
+	  reff[i] = beta/gamma * y_pred[i,1]/sum(y_pred[i,]);
+	}
+	
+	r0 = beta/gamma;
+	recovery = 1/gamma;
 					   
 }
