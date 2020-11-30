@@ -190,4 +190,56 @@ gather_draws(fit, reff[i]) %>%
 	)+
 	theme_minimal()
 # Think about adding convolution 
+
+
+# hospitals ---------------------------------------------------------------
+
+modh <- cmdstan_model(here::here("stan", "new-sir-h.stan"))
+hospitalizations <- data.table::fread("https://raw.githubusercontent.com/conedatascience/covid-data/master/data/timeseries/hospitalisations.csv")
+hospitalizations$Date <- lubridate::mdy(hospitalizations$Date)
+hospitalizations <- hospitalizations[,.(h=sum(`Number of COVID-19 Positive Patients In Hospital`)), by = "Date"]
+
+hospitalizations <- hospitalizations[order(Date)]
+
+
+stan_data <- list(
+	N_t =length(cases),
+	y0 = c(pop-recovered-infected,infected,1870,recovered),
+	t = 1:length(cases),
+	cases = cases[-1],
+	hospitalizations = tail(hospitalizations,59)$h,
+	pred_window = pred_duration,
+	t_pred = 1:(length(cases)+pred_duration)
+)
+
+fith <- modh$sample(data = stan_data, init = list(list(beta = .2), 
+																									list(gamma = .1)),
+										chains = 2, parallel_chains = 2,
+										iter_sampling = 4000, 
+										adapt_delta = .98, max_treedepth = 14)
+
+params_of_interest <- c("r0", "recovery", "beta", "gamma", "p", "gamma_h", "omega")
+fith$summary(variables = params_of_interest)
+
+gather_draws(fith, census[i]) %>%
+	#mutate(.value = .value * .07) %>% 
+	dplyr::ungroup() %>% 
+	dplyr::left_join(output_frame_ready, by = "i") %>% 
+	group_by(date) %>%
+	curve_interval(.value, .width = c(.5, .8, .95,.99)) %>%
+	ggplot(aes(x = date, y = .value)) +
+	geom_hline(yintercept = 1, color = "gray75", linetype = "dashed") +
+	geom_lineribbon(aes(ymin = .lower, ymax = .upper))+
+	scale_fill_brewer() +
+	labs(
+		title = "Simulated SIR Curve for Hospitalizations",
+		subtitle = "Daily COVID-19 Census for NC Since Phase 3",
+		y = "Census"
+	)+
+	geom_point(data = tibble(cases = tail(hospitalizations$h,59), 
+													 date = dates),
+						 aes(date, cases), inherit.aes = FALSE, colour = "orange")+
+	theme_minimal()
+
+
 # https://github.com/cobeylab/epidemic-deconvolution/blob/main/stan/deconvolve-uncorrelated.stan
