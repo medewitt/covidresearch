@@ -45,7 +45,7 @@ generated quantities {
   // y = b0 + b1 * sin(2 * pi*t /period)
   for( i in 1:N){
   
-  mu[i] = b0 *(1+ b1 * cos(2 * pi() * (week_no[i] - year_offset[years[i]])/period));
+  mu[i] = b0 *(1+ b1 * cos(2 * pi() * (week_no[i] - year_offset[years[i]])));
   log_lik[i] = normal_lpdf(y | mu[i], sigma);
   }
   

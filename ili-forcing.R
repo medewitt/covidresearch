@@ -59,12 +59,14 @@ stan_dat <- list(
 	N_years = length(unique(dat_nc$year)),
 	years = as.numeric(as.factor(dat_nc$year))
 )
+
+plot(dat_nc$unweighted_ili)
 fit2 <- mod2$sample(stan_dat)
-fitalt <- modalt$sample(stan_dat)
+fitalt <- modalt$sample(stan_dat, parallel_chains = 2)
 fit2$summary()
 fitalt$summary()
 fitalt$loo()
-posterior::as_draws_df(fit2$draws("y_hat")) %>% 
+posterior::as_draws_df(fitalt$draws("y_hat")) %>% 
 	dplyr::sample_frac(.10) %>% 
 	tidyr::pivot_longer(!starts_with("."),
 											names_to="ind",
@@ -78,7 +80,7 @@ posterior::as_draws_df(fit2$draws("y_hat")) %>%
 	labs(x="Week", y="ILI")
 
 fit2$summary()->year_effect
-plot(dat_nc$week_start,fit2$summary(variables = "y_hat")$mean, ylim = c(0,max(dat_nc$unweighted_ili)))
+plot(dat_nc$week_start,fitalt$summary(variables = "y_hat")$mean, ylim = c(0,max(dat_nc$unweighted_ili)))
 lines(dat_nc$week_start,dat_nc$unweighted_ili, col = "red")
 
 geo <- geographic_spread(years = NULL)

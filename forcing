@@ -1,0 +1,5 @@
+
+start_growth <- 200
+end_growth <- 50
+amplitude <- .5
+
