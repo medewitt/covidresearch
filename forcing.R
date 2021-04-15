@@ -36,5 +36,8 @@ out <- do.call(rbind, lapply(1:730, force_growth))
 plot(out)
 start_growth <- 200
 end_growth <- 50
+
+out <- do.call(rbind, lapply(1:730, force_growth, end_growth = 350))
+plot(out)
 theta <- (365 - start_growth + end_growth)/2
 1 + amplitude * cos(2 * pi * (1:50 %% 365-200 - theta+365) / (theta * 4))
