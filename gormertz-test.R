@@ -21,7 +21,7 @@ vax_daily =vax_daily %>%
   .[,first_dose := fifelse(is.na(first_dose),0,first_dose)] %>%
   .[,first_dose_cum := cumsum(first_dose), by = "county"]
 
-vax_daily[order(date), t := .I, by = c("county")]
+vax_daily[order(date), t := seq_len(.N), by = c("county")]
 
 vax_daily[, group_id := as.numeric(factor(county))]
 
@@ -69,9 +69,10 @@ as.data.table() %>%
   ggplot(aes(t, rates, colour = county)) +
   geom_line()+
   geom_point(data = vax_daily,
-  aes(x = t, y = first_dose_cum, colour = county), inherit.aes = =FALSE)
+  aes(x = t, y = first_dose_cum, colour = county), inherit.aes = FALSE)
 
 results %>%
 as.data.table() %>%
 .[,rates := mu, by ="county"] %>%
-.[county=="Guilford"]
+.[county=="Guilford"] %>%
+.[,daily_vax:= mu - shift(mu, type='lag')]-> daily_vax_estimated
