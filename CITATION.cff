@@ -1,0 +1,15 @@
+abstract: This is my awesome research software. It does many things.
+authors:
+  - family-names: DeWitt
+    given-names: Michael
+    orcid: "https://orcid.org/0000-0001-8940-1967"
+cff-version: 1.2.0
+date-released: "2021-08-20"
+keywords:
+  - "testing things"
+  - research
+license: Apache-2.0
+message: If you use this software, please cite it using these metadata.
+repository-code: "https://github.com/medewitt/covidresearch"
+title: My Research Software
+version: 0.11.2

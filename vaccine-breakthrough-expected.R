@@ -24,4 +24,9 @@ text(x = .7, y = prop_vax_infected(.7, vax_efficiency = .80),
 text(x = .8, y = prop_vax_infected(.8, .75), 
 		 labels = "75% Ve", cex = .8)
 
+p_vax <- .46
+reality_ve <- .9
+prop_alpha <- .2
+prop_delta <- 1 -prop_alpha
 
+((1-reality_ve)+prop_vax_infected(p_vax)*prop_alpha)
